@@ -1,0 +1,480 @@
+---
+// Castle-gate intro built on the game's real pixel art. Only transform and opacity are animated.
+// Shown when the inline script below adds `intro-on` (first visit in the session, no
+// reduced-motion preference) and the stage image decoded within 700 ms; then `intro-go` starts it.
+import { Picture } from 'astro:assets';
+import stage from '../assets/shots/bd-menu-center.png';
+
+// Deterministic pseudo-random so the markup is stable between builds.
+const rnd = (n: number) => {
+  const x = Math.sin(n * 97.13) * 10000;
+  return x - Math.floor(x);
+};
+const embers = Array.from({ length: 18 }, (_, i) => ({
+  x: 10 + rnd(i + 1) * 80,
+  y: 60 + rnd(i + 40) * 36,
+  s: 2 + Math.round(rnd(i + 80) * 2),
+  rise: 90 + rnd(i + 120) * 240,
+  drift: (rnd(i + 160) - 0.5) * 80,
+  delay: rnd(i + 200) * 2.1,
+  dur: 1.3 + rnd(i + 240) * 1.0,
+}));
+
+// Pointed iron tips under the portcullis bars: 8 columns, one spike each.
+const COLS = 8;
+const barCenter = 0.53; // matches the bar position inside a tile in the CSS
+const hw = 0.09 / COLS;
+const spikes = Array.from({ length: COLS }, (_, k) => {
+  const c = ((k + barCenter) / COLS) * 100;
+  const l = c - hw * 100;
+  const r = c + hw * 100;
+  return `${l.toFixed(2)}% 0,${c.toFixed(2)}% 100%,${r.toFixed(2)}% 0`;
+}).join(',');
+---
+
+<div class="intro" aria-hidden="true">
+  <div class="shake">
+    <div class="cam">
+      <div class="stage">
+        <Picture
+          src={stage}
+          alt=""
+          id="intro-img"
+          widths={[900, 1600]}
+          sizes="100vw"
+          formats={['avif']}
+          fallbackFormat="webp"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        />
+        <div class="gate">
+          <div class="gate__in">
+            <div class="gate__bars"></div>
+            <div class="gate__spikes" style={`clip-path:polygon(${spikes})`}></div>
+          </div>
+        </div>
+        <i class="tglow tglow--l"></i>
+        <i class="tglow tglow--r"></i>
+        <i class="burst"></i>
+        <i class="dust dust--1"></i>
+        <i class="dust dust--2"></i>
+        <i class="dust dust--3"></i>
+      </div>
+    </div>
+  </div>
+  <div class="veil"></div>
+  <div class="intro__vignette"></div>
+  <div class="intro__embers">
+    {
+      embers.map((e) => (
+        <i
+          style={`left:${e.x.toFixed(1)}%;top:${e.y.toFixed(1)}%;width:${e.s}px;height:${e.s}px;--rise:${e.rise.toFixed(0)}px;--drift:${e.drift.toFixed(0)}px;animation-delay:${e.delay.toFixed(2)}s;animation-duration:${e.dur.toFixed(2)}s`}
+        />
+      ))
+    }
+  </div>
+  <div class="flash"></div>
+</div>
+
+<script is:inline>
+  (function () {
+    var d = document.documentElement,
+      im = document.getElementById('intro-img');
+    try {
+      if (!im || matchMedia('(prefers-reduced-motion: reduce)').matches || sessionStorage.getItem('bd-intro')) return;
+      sessionStorage.setItem('bd-intro', '1');
+    } catch (e) {
+      return;
+    }
+    d.classList.add('intro-on');
+    var E = ['pointerdown', 'keydown', 'wheel', 'touchstart'],
+      s = 0,
+      t;
+    function fin(skip) {
+      s = 2;
+      clearTimeout(t);
+      E.forEach(function (n) {
+        removeEventListener(n, sk, true);
+      });
+      if (skip) {
+        d.classList.add('intro-skip');
+        setTimeout(function () {
+          d.classList.remove('intro-on', 'intro-go', 'intro-skip');
+        }, 260);
+      } else d.classList.remove('intro-on', 'intro-go');
+    }
+    function sk() {
+      fin(1);
+    }
+    E.forEach(function (n) {
+      addEventListener(n, sk, { capture: true, passive: true });
+    });
+    // Never show a half-loaded stage: if it is not decoded in 700 ms, fall back to a plain fade.
+    var cap = setTimeout(function () {
+      if (!s) fin(1);
+    }, 700);
+    (im.decode ? im.decode() : Promise.reject()).then(
+      function () {
+        clearTimeout(cap);
+        if (s) return;
+        s = 1;
+        d.classList.add('intro-go');
+        t = setTimeout(fin, 3900);
+      },
+      function () {
+        clearTimeout(cap);
+        if (!s) fin(1);
+      },
+    );
+  })();
+</script>
+
+<style is:global>
+  .intro {
+    --sw: max(100vw, min(185.5vh, 175vw)); /* covers wide screens; on phones 1.75x width keeps arch and both torches in frame */
+    --sh: calc(var(--sw) / 1.855);
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #000;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .intro-on .intro {
+    display: block;
+  }
+  .shake,
+  .cam {
+    position: absolute;
+    inset: 0;
+  }
+  .cam {
+    /* push-through point: the light burst inside the arch */
+    transform-origin: 50% calc(50% + var(--sh) * 0.084);
+  }
+  .stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--sw);
+    height: var(--sh);
+    margin: calc(var(--sh) / -2) 0 0 calc(var(--sw) / -2);
+  }
+  .stage picture,
+  .stage img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  @media (min-width: 900px) {
+    .stage img {
+      image-rendering: pixelated;
+    }
+  }
+  /* fade the stage edges into black (matters when the stage is letterboxed on phones) */
+  .stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, #000 0, transparent 14%, transparent 86%, #000 100%),
+      linear-gradient(90deg, #000 0, transparent 10%, transparent 90%, #000 100%);
+  }
+
+  /* ---- iron portcullis (CSS only, clipped to the arch opening) ---- */
+  .gate {
+    --pw: calc(var(--sw) * 0.246);
+    --t: calc(var(--pw) / 8);
+    position: absolute;
+    left: 37.7%;
+    width: 24.6%;
+    top: 26.4%;
+    bottom: 0;
+    overflow: hidden;
+    border-radius: calc(var(--sw) * 0.123) calc(var(--sw) * 0.123) 0 0;
+    box-shadow: inset 0 0 calc(var(--sw) * 0.03) rgba(0, 0, 0, 0.7);
+  }
+  .gate__in {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    will-change: transform;
+  }
+  .gate__bars {
+    flex: 1;
+    background:
+      radial-gradient(
+          circle at 50% 50%,
+          #b3a483 0,
+          #b3a483 calc(var(--t) * 0.07),
+          #3b3226 calc(var(--t) * 0.07),
+          #3b3226 calc(var(--t) * 0.11),
+          transparent calc(var(--t) * 0.115)
+        )
+        0 0 / var(--t) var(--t),
+      linear-gradient(90deg, transparent 0 40%, #5a5142 40% 45%, #1a1713 45% 61%, #0a0806 61% 66%, transparent 66%) 0 0 / var(--t) var(--t),
+      linear-gradient(0deg, transparent 0 41%, #0a0806 41% 46%, #1a1713 46% 56%, #4b4336 56% 59%, transparent 59%) 0 0 / var(--t) var(--t);
+  }
+  .gate__spikes {
+    height: var(--t);
+    background: linear-gradient(90deg, #1a1713, #1a1713);
+  }
+
+  /* ---- light layers ---- */
+  .tglow {
+    position: absolute;
+    top: 50.5%;
+    width: 34%;
+    aspect-ratio: 1;
+    margin: -17% 0 0 -17%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 178, 80, 0.42) 0, rgba(255, 130, 40, 0.26) 34%, transparent 68%);
+    opacity: 0;
+    will-change: opacity;
+  }
+  .tglow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    opacity: 0.6;
+  }
+  .tglow--l {
+    left: 27.75%;
+  }
+  .tglow--r {
+    left: 72.25%;
+  }
+  .burst {
+    position: absolute;
+    left: 50%;
+    top: 58.4%;
+    width: 36%;
+    aspect-ratio: 1;
+    margin: -18% 0 0 -18%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0, #cfe0ff 16%, rgba(90, 150, 255, 0.6) 40%, transparent 70%);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .dust {
+    position: absolute;
+    bottom: 0;
+    width: 24%;
+    height: 9%;
+    margin-left: -12%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(200, 170, 130, 0.65), transparent 70%);
+    opacity: 0;
+  }
+  .dust--1 {
+    left: 41%;
+  }
+  .dust--2 {
+    left: 50%;
+    height: 12%;
+  }
+  .dust--3 {
+    left: 59%;
+  }
+  .veil {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    will-change: opacity;
+  }
+  .intro__vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0, 0, 0, 0.8) 100%);
+  }
+  .flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 56%, #fff 0, #dfeaff 35%, #7aa6ff 100%);
+    opacity: 0;
+    will-change: opacity;
+  }
+  .intro__embers i {
+    position: absolute;
+    border-radius: 50%;
+    background: #ffcf6b;
+    box-shadow: 0 0 6px 1px #ff9a3c;
+    opacity: 0;
+  }
+
+  /* ---- choreography: starts only once the stage is decoded (.intro-go) ---- */
+  .intro-go .intro {
+    animation: intro-out 2.95s linear forwards;
+  }
+  .intro-go .veil {
+    animation: veil 1.6s linear forwards;
+  }
+  .intro-go .tglow--l {
+    animation: torch-on 0.45s ease-out 0.3s forwards;
+  }
+  .intro-go .tglow--r {
+    animation: torch-on 0.45s ease-out 0.55s forwards;
+  }
+  .intro-go .tglow::before {
+    animation: flick 0.27s ease-in-out infinite alternate;
+  }
+  .intro-go .tglow--r::before {
+    animation-duration: 0.34s;
+  }
+  .intro-go .gate__in {
+    animation: rise 0.85s cubic-bezier(0.55, 0, 0.35, 1) 0.9s forwards;
+  }
+  .intro-go .shake {
+    will-change: transform;
+    animation: shake 0.3s linear 1.72s;
+  }
+  .intro-go .dust {
+    animation: dust 0.9s ease-out 1.72s both;
+  }
+  .intro-go .dust--2 {
+    animation-delay: 1.78s;
+  }
+  .intro-go .dust--3 {
+    animation-delay: 1.85s;
+  }
+  .intro-go .burst {
+    animation: burst 0.95s ease-out 1.5s forwards;
+  }
+  .intro-go .cam {
+    will-change: transform;
+    animation: push 1.15s cubic-bezier(0.55, 0, 0.85, 0.4) 1.45s forwards;
+  }
+  .intro-go .flash {
+    animation: flash 0.4s ease-in 2.05s forwards;
+  }
+  .intro-go .intro__embers i {
+    animation-name: ember;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+  .intro-skip .intro {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+
+  @keyframes intro-out {
+    0%,
+    83% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes veil {
+    0%,
+    19% {
+      opacity: 1;
+    }
+    38% {
+      opacity: 0.74;
+    }
+    62% {
+      opacity: 0.42;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes torch-on {
+    from {
+      opacity: 0;
+      transform: scale(0.55);
+    }
+    60% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes flick {
+    from {
+      opacity: 0.35;
+    }
+    to {
+      opacity: 0.85;
+    }
+  }
+  @keyframes rise {
+    to {
+      transform: translate3d(0, -104%, 0);
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    25% {
+      transform: translate3d(0, 5px, 0);
+    }
+    50% {
+      transform: translate3d(-3px, -3px, 0);
+    }
+    75% {
+      transform: translate3d(2px, 2px, 0);
+    }
+  }
+  @keyframes dust {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0) scale(0.5);
+    }
+    25% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(0, -40%, 0) scale(1.7);
+    }
+  }
+  @keyframes burst {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    35% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: scale(2.6);
+    }
+  }
+  @keyframes push {
+    to {
+      transform: scale(3.6);
+    }
+  }
+  @keyframes flash {
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes ember {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0);
+    }
+    20% {
+      opacity: 0.9;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--drift), calc(var(--rise) * -1), 0);
+    }
+  }
+</style>

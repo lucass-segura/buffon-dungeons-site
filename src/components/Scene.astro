@@ -1,0 +1,48 @@
+---
+// One full-width showcase scene: a framed screenshot plus a punchy headline and at most one short line.
+import { Picture } from 'astro:assets';
+
+interface Props {
+  img: ImageMetadata;
+  alt: string;
+  title: string;
+  line?: string;
+  chips?: string[];
+  flip?: boolean;
+  accent: string;
+  tilt?: number;
+}
+const { img, alt, title, line, chips, flip = false, accent, tilt = 0 } = Astro.props;
+---
+
+<section class:list={['scene', { 'scene--flip': flip }]} style={`--accent:${accent};--tilt:${tilt}deg`}>
+  <div class="wrap scene__grid">
+    <div class:list={['scene__shot', 'reveal', flip ? 'reveal--r' : 'reveal--l']}>
+      <div class="frame">
+        <Picture
+          src={img}
+          alt={alt}
+          widths={[480, 720, 1080]}
+          sizes="(min-width: 1200px) 640px, (min-width: 900px) 56vw, 92vw"
+          formats={['avif']}
+          fallbackFormat="webp"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </div>
+    <div class="scene__text reveal" style="--d:.1s">
+      <h2 class="big">{title}</h2>
+      {line && <p>{line}</p>}
+      {
+        chips && (
+          <ul class="chips" role="list">
+            {chips.map((c) => (
+              <li>{c}</li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </div>
+</section>

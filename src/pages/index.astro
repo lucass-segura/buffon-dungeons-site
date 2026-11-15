@@ -1,0 +1,298 @@
+---
+import { Picture, Image, getImage } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Intro from '../components/Intro.astro';
+import Scene from '../components/Scene.astro';
+import atlas from '../assets/cards/atlas.webp?url';
+import atlasBlur from '../assets/cards/atlas-blur.webp?url';
+import icon from '../assets/icon.png';
+import gate from '../assets/shots/bd-menu-center.png';
+import heroShot from '../assets/shots/hero-finisher.png';
+import online from '../assets/shots/ar-42-coop-4p.png';
+import strike from '../assets/shots/gm-pb-5-flight.png';
+import boss from '../assets/shots/gm-pb-13-boss-impact.png';
+import shop from '../assets/shots/gm-s1-shop-idle.png';
+import victory from '../assets/shots/gm-e2-victory.png';
+import { ALL_RELEASES_URL, fallbackInfo, fetchLatest, formatSize, metaLine } from '../lib/release';
+
+// Build-time resolution of the latest release. Any failure falls back to /releases/latest
+// links with no version or size, so the build never breaks because of the network.
+// SITE_FORCE_FALLBACK=1 simulates that failure.
+let info = fallbackInfo();
+if (!process.env.SITE_FORCE_FALLBACK) {
+  try {
+    const fresh = await fetchLatest(process.env.GITHUB_TOKEN);
+    if (fresh) info = fresh;
+  } catch (err) {
+    console.warn('[release] could not resolve the latest release, using fallback links:', (err as Error).message);
+  }
+}
+const A = info.assets;
+const size = (k: keyof typeof A) => formatSize(A[k].size);
+
+// Intro stage: preload the AVIF candidates (same URLs the <picture> inside the intro picks) and reuse them
+// as the hero backdrop so the page never downloads the gate twice.
+const stageSet = await getImage({ src: gate, widths: [900, 1600], format: 'avif', sizes: '100vw' } as any);
+const gateSmall = await getImage({ src: gate, width: 900, format: 'avif' });
+const gateLarge = await getImage({ src: gate, width: 1600, format: 'avif' });
+
+const words = ['BUFFON', 'DUNGEONS'];
+let li = 0;
+const logo = words.map((w) => [...w].map((c) => ({ c, i: li++ })));
+
+// Floating card layers. Atlas cells: 0 gold 6, 1 cyan Q, 2 cyan K, 3 ten of diamonds, 4 rainbow 8,
+// 5 ace of diamonds, 6 joker Foco, 7 joker Timador. Positions are in % of the layer; "far" ones use the soft atlas.
+type FC = { x: number; y: number; cell: number; rot: number; k?: number; far?: boolean; o?: number; dur?: number; dx?: number; dl?: number };
+const layers: { cls: string; top?: string; cards: FC[] }[] = [
+  {
+    cls: 'fc-layer--hero',
+    cards: [
+      { x: 3, y: 7, cell: 6, rot: -14, k: 1.05, o: 0.6, dur: 15 },
+      { x: 89, y: 9, cell: 1, rot: 12, k: 0.9, o: 0.55, dur: 17, dl: -4 },
+      { x: 11, y: 52, cell: 3, rot: 9, k: 0.75, far: true, o: 0.4, dur: 19, dl: -2 },
+      { x: 84, y: 48, cell: 5, rot: -9, k: 0.8, far: true, o: 0.4, dur: 16, dl: -7 },
+      { x: 26, y: 24, cell: 2, rot: 20, k: 0.55, far: true, o: 0.3, dur: 21, dl: -3 },
+      { x: 71, y: 22, cell: 4, rot: -18, k: 0.6, far: true, o: 0.32, dur: 18, dl: -9 },
+    ],
+  },
+  {
+    cls: '',
+    top: '5%',
+    cards: [
+      { x: 1, y: 40, cell: 0, rot: 11, k: 0.9, o: 0.5, dur: 16 },
+      { x: 92, y: 10, cell: 7, rot: -13, k: 0.95, o: 0.5, dur: 18, dl: -5 },
+      { x: 94, y: 72, cell: 3, rot: 16, k: 0.6, far: true, o: 0.35, dur: 20, dl: -8 },
+    ],
+  },
+  {
+    cls: '',
+    top: '38%',
+    cards: [
+      { x: 92, y: 30, cell: 5, rot: -12, k: 1, o: 0.5, dur: 17 },
+      { x: 2, y: 8, cell: 1, rot: 14, k: 0.7, far: true, o: 0.38, dur: 19, dl: -6 },
+      { x: 3, y: 74, cell: 6, rot: -9, k: 0.85, o: 0.5, dur: 15, dl: -2 },
+    ],
+  },
+  {
+    cls: '',
+    top: '66%',
+    cards: [
+      { x: 1, y: 12, cell: 4, rot: 10, k: 0.95, o: 0.5, dur: 16, dl: -3 },
+      { x: 93, y: 55, cell: 2, rot: -15, k: 0.85, o: 0.5, dur: 18 },
+      { x: 90, y: 4, cell: 7, rot: 8, k: 0.6, far: true, o: 0.35, dur: 21, dl: -10 },
+    ],
+  },
+];
+const fcStyle = (c: FC) =>
+  `--x:${c.x}%;--y:${c.y}%;--col:${c.cell % 4};--row:${Math.floor(c.cell / 4)};--rot:${c.rot}deg;--k:${c.k ?? 1};--o:${c.o ?? 0.5};--dur:${c.dur ?? 14}s;--dl:${c.dl ?? 0}s;--dx:${c.dx ?? (c.rot > 0 ? 16 : -16)}px;--drot:${c.rot > 0 ? 6 : -6}deg`;
+
+const arrow = 'M8 2h4v8h4l-6 7-6-7h4z';
+---
+
+<Base
+  title="Buffon Dungeons: un roguelike de póker en las mazmorras"
+  description="Juega manos de póker para derrotar monstruos en las mazmorras. Un roguelike para escritorio, solo o en línea con hasta tres amigos. Descarga gratuita para Windows, macOS y Linux."
+>
+  <link
+    slot="head"
+    rel="preload"
+    as="image"
+    type="image/avif"
+    imagesrcset={stageSet.srcSet.attribute}
+    imagesizes="100vw"
+    fetchpriority="high"
+  />
+  <a class="skip" href="#descargas">Ir a las descargas</a>
+  <Intro />
+
+  <header
+    class="hero"
+    style={`--gate-s:url(${gateSmall.src});--gate-l:url(${gateLarge.src});--atlas:url(${atlas});--atlas-blur:url(${atlasBlur})`}
+  >
+    <div class="hero__gate" aria-hidden="true"></div>
+    <div class="fc-layer fc-layer--hero" aria-hidden="true">
+      {layers[0].cards.map((c) => <i class:list={['fc', { 'fc--far': c.far }]} style={fcStyle(c)} />)}
+    </div>
+    <div class="wrap">
+      <Image class="hero__icon" src={icon} width={84} height={84} densities={[1, 2]} alt="" loading="eager" />
+      <h1 class="logo" aria-label="Buffon Dungeons">
+        {
+          logo.map((word) => (
+            <span class="word" aria-hidden="true">
+              {word.map((l) => (
+                <span class="letter" data-c={l.c} style={`--i:${l.i}`}>
+                  {l.c}
+                </span>
+              ))}
+            </span>
+          ))
+        }
+      </h1>
+
+      <div class="hero-rest">
+        <p class="tagline">Un roguelike de póker en las mazmorras</p>
+
+        <div class="hero__cta">
+          <a class="btn btn--big" id="hero-cta" href="#descargas">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d={arrow} fill="currentColor"></path></svg>
+            <span id="hero-cta-label">Descargar</span>
+          </a>
+          <p class="hero__meta" id="hero-meta">{metaLine(info.version, null)}</p>
+          <a class="hero__more" href="#descargas">Otras plataformas</a>
+          <p class="mobile-note" id="mobile-note" hidden>
+            Buffon Dungeons es un juego de escritorio. Ábrelo desde Windows, macOS o Linux.
+          </p>
+        </div>
+
+        <div class="hero__shot">
+          <div class="frame">
+            <Picture
+              src={heroShot}
+              alt="El bufón y la Rata del Túnel, en la cinemática de remate"
+              widths={[480, 720, 1080, 1600]}
+              sizes="(min-width: 1100px) 1060px, 92vw"
+              formats={['avif']}
+              fallbackFormat="webp"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main style={`--atlas:url(${atlas});--atlas-blur:url(${atlasBlur})`}>
+    {
+      layers.slice(1).map((l) => (
+        <div class="fc-layer" style={`top:${l.top}`} aria-hidden="true">
+          {l.cards.map((c) => (
+            <i class:list={['fc', { 'fc--far': c.far }]} style={fcStyle(c)} />
+          ))}
+        </div>
+      ))
+    }
+
+    <Scene
+      img={online}
+      alt="Cuatro jugadores en línea derrotan juntos a la Rata del Túnel"
+      title="Hasta 4 jugadores online"
+      chips={['Batalla', 'Cooperativo', 'Supervivencia', '2 vs 2']}
+      accent="#3d7bd9"
+      tilt={-1}
+    />
+    <Scene
+      img={strike}
+      alt="Una escalera real vuela hacia la Rata del Túnel: 251 fichas por 81,5 de mult"
+      title="Cada mano es un golpe"
+      line="Fichas por mult: cuanto mejor la mano, más daño."
+      accent="#c8443a"
+      tilt={1}
+      flip
+    />
+    <Scene
+      img={boss}
+      alt="El bufón golpea al Guardián de Hierro, jefe del piso 6"
+      title="Jefes malditos"
+      line="Un jefe cada tres pisos, con su propia maldición."
+      accent="#9b59d0"
+      tilt={-1}
+    />
+    <Scene
+      img={shop}
+      alt="La tienda: comodines, cofres de órbitas y sigilos"
+      title="Arma tu mazo"
+      line="Comodines, sigilos y órbitas."
+      accent="#e8b24a"
+      tilt={1}
+      flip
+    />
+    <Scene
+      img={victory}
+      alt="Pantalla de victoria"
+      title="Gana. Y sigue bajando."
+      line="Sin final: cada piso, un enemigo más duro."
+      accent="#4fd18b"
+      tilt={-1}
+    />
+
+    <section class="section platforms" id="descargas" aria-labelledby="t-descargas">
+      <div class="wrap">
+        <div class="section__head reveal">
+          <p class="eyebrow">Gratis</p>
+          <h2 class="h2" id="t-descargas">
+            Descarga <span data-version hidden={!info.version}>{info.version ? `v${info.version}` : ''}</span>
+          </h2>
+          <div class="rule" aria-hidden="true"><i></i></div>
+        </div>
+
+        <div class="plat-grid">
+          <article class="plat reveal" data-platform="windows">
+            <span class="plat__badge">Tu sistema</span>
+            <h3>Windows</h3>
+            <div class="plat__btns">
+              <a class="btn" data-dl="windowsSetup" href={A.windowsSetup.url}>
+                Instalador <small data-size="windowsSetup" hidden={!size('windowsSetup')}>{size('windowsSetup')}</small>
+              </a>
+              <a class="btn btn--stone" data-dl="windowsZip" href={A.windowsZip.url}>
+                ZIP portátil <small data-size="windowsZip" hidden={!size('windowsZip')}>{size('windowsZip')}</small>
+              </a>
+            </div>
+            <details>
+              <summary>Cómo instalar</summary>
+              <p>Si SmartScreen avisa: <strong>Más información → Ejecutar de todas formas</strong>. El ZIP no necesita instalación.</p>
+            </details>
+          </article>
+
+          <article class="plat reveal" style="--d:.08s" data-platform="macos">
+            <span class="plat__badge">Tu sistema</span>
+            <h3>macOS</h3>
+            <div class="plat__btns">
+              <a class="btn" data-dl="macos" href={A.macos.url}>
+                Descargar .dmg <small data-size="macos" hidden={!size('macos')}>{size('macos')}</small>
+              </a>
+            </div>
+            <details>
+              <summary>Cómo instalar</summary>
+              <p>Arrastra el juego a Aplicaciones. La primera vez: clic derecho → <strong>Abrir</strong>.</p>
+            </details>
+          </article>
+
+          <article class="plat reveal" style="--d:.16s" data-platform="linux">
+            <span class="plat__badge">Tu sistema</span>
+            <h3>Linux</h3>
+            <div class="plat__btns">
+              <a class="btn" data-dl="linux" href={A.linux.url}>
+                Descargar .tar.gz <small data-size="linux" hidden={!size('linux')}>{size('linux')}</small>
+              </a>
+            </div>
+            <details>
+              <summary>Cómo instalar</summary>
+              <p>Descomprime con <code>tar xzf</code> y ejecuta <code>./install.sh</code>. Solo x86_64.</p>
+            </details>
+          </article>
+        </div>
+
+        <p class="plat-foot">
+          El juego se actualiza solo desde el menú, con descarga verificada con SHA-256.
+          <a data-dl="sums" href={A.sums.url}>Sumas SHA-256</a> · <a href={ALL_RELEASES_URL}>Todas las versiones</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>
+        © Buffon Dungeons. Todos los derechos reservados. · Hecho con <a href="https://love2d.org" rel="noopener">LÖVE</a> ·
+        Fuentes <a href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}fonts/OFL-jersey10.txt`}>Jersey 10</a> y <a href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}fonts/OFL-chakrapetch.txt`}>Chakra Petch</a> (OFL)
+      </p>
+    </div>
+  </footer>
+
+  <script type="application/json" id="release-data" is:inline set:html={JSON.stringify(info)} />
+  <script>
+    import '../scripts/main.ts';
+  </script>
+</Base>
