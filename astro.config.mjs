@@ -1,9 +1,8 @@
 import { defineConfig } from 'astro/config';
 
-// Hosted on GitHub Pages as a project site: https://lucass-segura.github.io/buffon-dungeons-site/
+// Hosted on Vercel: https://buffon-dungeons.vercel.app
 export default defineConfig({
-  site: 'https://lucass-segura.github.io',
-  base: '/buffon-dungeons-site',
+  site: 'https://buffon-dungeons.vercel.app',
   output: 'static',
   compressHTML: true,
   build: { inlineStylesheets: 'auto' },
