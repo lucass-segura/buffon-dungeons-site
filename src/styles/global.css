@@ -460,8 +460,6 @@ main {
   position: relative;
   z-index: 1;
   padding-block: clamp(36px, 6vw, 84px);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 620px;
 }
 .scene__grid {
   display: grid;
@@ -737,8 +735,9 @@ main {
 .platforms {
   position: relative;
   z-index: 1;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 760px;
+  /* No content-visibility above or on the #descargas anchor: estimated heights
+     shift the layout after the jump and the first card ends up off screen. */
+  scroll-margin-top: 12px;
 }
 
 
