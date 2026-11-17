@@ -819,3 +819,54 @@ main {
     background-image: var(--gate-s);
   }
 }
+/* ---------- macOS one-line install ---------- */
+.cmd__label {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.cmd__box {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 207, 107, 0.22);
+  border-radius: 4px;
+}
+.plat .cmd__box code {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  background: none;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  word-break: break-all;
+  user-select: all;
+}
+.cmd__copy {
+  flex: none;
+  align-self: center;
+  padding: 6px 12px;
+  background: var(--gold);
+  color: var(--ink);
+  border: 2px solid #4a2f0e;
+  border-radius: 3px;
+  font: 700 0.82rem var(--font-body);
+  cursor: pointer;
+}
+.cmd__copy:hover {
+  filter: brightness(1.08);
+}
+.cmd__copy:focus-visible {
+  outline: 2px solid var(--torch-hi);
+  outline-offset: 2px;
+}
+.plat .steps {
+  margin: 8px 0 0;
+  padding-left: 1.3em;
+}
+.plat .steps li + li {
+  margin-top: 4px;
+}

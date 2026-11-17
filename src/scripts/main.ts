@@ -122,3 +122,25 @@ if ('IntersectionObserver' in window) {
 } else {
   layers.forEach((el) => el.classList.add('on'));
 }
+
+// Copy buttons for install commands.
+$$<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const text = $(btn.dataset.copy || '')?.textContent?.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = '¡Copiado!';
+    } catch {
+      const range = document.createRange();
+      const target = $(btn.dataset.copy || '');
+      if (target) {
+        range.selectNodeContents(target);
+        window.getSelection()?.removeAllRanges();
+        window.getSelection()?.addRange(range);
+      }
+      btn.textContent = 'Selecciónalo y cópialo';
+    }
+    setTimeout(() => (btn.textContent = 'Copiar'), 2200);
+  });
+});

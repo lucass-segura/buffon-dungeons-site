@@ -13,7 +13,7 @@ import strike from '../assets/shots/gm-pb-5-flight.png';
 import boss from '../assets/shots/gm-pb-13-boss-impact.png';
 import shop from '../assets/shots/gm-s1-shop-idle.png';
 import victory from '../assets/shots/gm-e2-victory.png';
-import { ALL_RELEASES_URL, fallbackInfo, fetchLatest, formatSize, metaLine } from '../lib/release';
+import { ALL_RELEASES_URL, MAC_INSTALL_CMD, fallbackInfo, fetchLatest, formatSize, metaLine } from '../lib/release';
 
 // Build-time resolution of the latest release. Any failure falls back to /releases/latest
 // links with no version or size, so the build never breaks because of the network.
@@ -253,9 +253,20 @@ const arrow = 'M8 2h4v8h4l-6 7-6-7h4z';
                 Descargar .dmg <small data-size="macos" hidden={!size('macos')}>{size('macos')}</small>
               </a>
             </div>
-            <details>
-              <summary>Cómo instalar</summary>
-              <p>Arrastra el juego a Aplicaciones. La primera vez: clic derecho → <strong>Abrir</strong>.</p>
+            <div class="cmd">
+              <p class="cmd__label">Recomendado: instala con un comando en la Terminal, sin avisos</p>
+              <div class="cmd__box">
+                <code id="mac-cmd">{MAC_INSTALL_CMD}</code>
+                <button class="cmd__copy" type="button" data-copy="#mac-cmd" aria-label="Copiar el comando">Copiar</button>
+              </div>
+            </div>
+            <details open>
+              <summary>Con el .dmg: si macOS lo bloquea</summary>
+              <ol class="steps">
+                <li>Arrastra el juego a Aplicaciones y ábrelo. En el aviso, pulsa <strong>Listo</strong>.</li>
+                <li>Ve a <strong>Ajustes del Sistema → Privacidad y seguridad</strong>.</li>
+                <li>Abajo del todo, pulsa <strong>Abrir igualmente</strong> y confirma. Solo la primera vez.</li>
+              </ol>
             </details>
           </article>
 

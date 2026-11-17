@@ -5,6 +5,8 @@ export const REPO = 'lucass-segura/buffon-dungeons-releases';
 export const API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
 export const LATEST_URL = `https://github.com/${REPO}/releases/latest`;
 export const ALL_RELEASES_URL = `https://github.com/${REPO}/releases`;
+/** One-line macOS install: curl downloads carry no quarantine flag, so Gatekeeper does not block the app. */
+export const MAC_INSTALL_CMD = `curl -fsSL ${LATEST_URL}/download/install-macos.sh | bash`;
 
 export type AssetKey = 'windowsSetup' | 'windowsZip' | 'macos' | 'linux' | 'sums';
 
